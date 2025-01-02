@@ -72,7 +72,7 @@ __global__ void reduce_max(float *input, float *output, int n) {
   unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
  // Tirar esta linha se usar o bloco de codigo seguinte
-  shared_data[tid] = input[idx];
+  //shared_data[tid] = input[idx];
 
  //
  // -> Problemas de memoria com esta parte 
@@ -80,11 +80,11 @@ __global__ void reduce_max(float *input, float *output, int n) {
  //     se não tiver dá reultado perto do desejado,
  //     mas com memory leaks) 
  //
- // if(idx < n) {
- //	shared_data[tid] = input[idx];
- // } else {
- //	shared_data[tid] = -INFINITY;
- // }
+ if(idx < n) {
+ 	shared_data[tid] = input[idx];
+ } else {
+ 	shared_data[tid] = -INFINITY;
+ }
   __syncthreads();
 
   for(unsigned int s = blockDim.x/2; s > 0; s >>= 1) {
@@ -95,6 +95,7 @@ __global__ void reduce_max(float *input, float *output, int n) {
   }
 
   if(tid == 0) {
+    printf("Block %d: Max = %f \n", blockIdx.x,shared_data[0]);
 	  output[blockIdx.x] = shared_data[0];
   }	
 }
