@@ -32,9 +32,6 @@ void set_bnd(int M, int N, int O, int b, float *x) {
   int i, j;
 
   // Set boundary on faces
-  #pragma omp parallel 
-  {
-  #pragma omp for collapse(2) 
   for (j = 1; j <= N; j++) {
   for (i = 1; i <= M; i++) {
 
@@ -43,7 +40,7 @@ void set_bnd(int M, int N, int O, int b, float *x) {
     }
   }
 
-  #pragma omp for collapse(2)
+  
   for (j = 1; j <= O; j++) { 
     for (i = 1; i <= N; i++) {
       x[IX(0, i, j)] = b == 1 ? -x[IX(1, i, j)] : x[IX(1, i, j)];
@@ -51,14 +48,14 @@ void set_bnd(int M, int N, int O, int b, float *x) {
     }
   }
 
-  #pragma omp for collapse(2)
+  
   for (j = 1; j <= O; j++) {
     for (i = 1; i <= M; i++) {
       x[IX(i, 0, j)] = b == 2 ? -x[IX(i, 1, j)] : x[IX(i, 1, j)];
       x[IX(i, N + 1, j)] = b == 2 ? -x[IX(i, N, j)] : x[IX(i, N, j)];
     }
   }
-  }
+  
   // Set corners
   x[IX(0, 0, 0)] = 0.33f * (x[IX(1, 0, 0)] + x[IX(0, 1, 0)] + x[IX(0, 0, 1)]);
   x[IX(M + 1, 0, 0)] = 0.33f * (x[IX(M, 0, 0)] + x[IX(M + 1, 1, 0)] + x[IX(M + 1, 0, 1)]);
@@ -178,7 +175,6 @@ void lin_solve(int M, int N, int O, int b, float *x, float *x0, float a, float c
     // Redução final feita no CPU -> melhoria: fazer a redução total no GPU
     //    
 
-    #pragma omp parallel for reduction(max:max_change)
     for(int i = 0; i < num_blocks_reduction; i++) {
 	    max_change = fmaxf(max_change, h_max[i]);
     }
@@ -211,7 +207,6 @@ void diffuse(int M, int N, int O, int b, float *x, float *x0, float diff, float 
 void advect(int M, int N, int O, int b, float *d, float *d0, float *u, float *v, float *w, float dt) {
   float dtX = dt * M, dtY = dt * N, dtZ = dt * O;
 
-  #pragma omp parallel for collapse(3)
   for (int k = 1; k <= O; k++) {
     for (int j = 1; j <= N; j++) {
       for (int i = 1; i <= M; i++) {
@@ -259,7 +254,6 @@ void advect(int M, int N, int O, int b, float *d, float *d0, float *u, float *v,
 // Spatial Locality Done
 void project(int M, int N, int O, float *u, float *v, float *w, float *p, float *div) {
 
-  #pragma omp parallel for collapse(3)
   for (int k = 1; k <= O; k++) {
     for (int j = 1; j <= N; j++) {
       for (int i = 1; i <= M; i++) {
@@ -278,7 +272,6 @@ void project(int M, int N, int O, float *u, float *v, float *w, float *p, float 
   set_bnd(M, N, O, 0, p);
   lin_solve(M, N, O, 0, p, div, 1, 6);
 
-  #pragma omp parallel for collapse(3)
   for (int k = 1; k <= O; k++) {
     for (int j = 1; j <= N; j++) {
       for (int i = 1; i <= M; i++) {
