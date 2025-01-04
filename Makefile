@@ -1,4 +1,4 @@
-CPP = nvcc -arch=compute_35 -code=sm_35 -Wno-deprecated-gpu-targets -Xcompiler "-Ofast -ftree-vectorize -msse4 -mavx -fopenmp"
+CPP = nvcc -arch=compute_35 -code=sm_35 -Wno-deprecated-gpu-targets -Xcompiler "-O2 -ftree-vectorize -msse4 -mavx -fopenmp"
 
 SRCS = main.cpp fluid_solver.cu EventManager.cpp
 
