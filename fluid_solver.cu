@@ -319,7 +319,7 @@ __global__ void project1_kernel(int M, int N, int O, float *u, float *v, float *
 }
 
 
-__global__ void project2_kernel(int M, int N, int O, float *u, float *v, float *w, float *p,) {
+__global__ void project2_kernel(int M, int N, int O, float *u, float *v, float *w, float *p) {
 
   int i = blockIdx.x * blockDim.x + threadIdx.x + 1;
   int j = blockIdx.y * blockDim.y + threadIdx.y + 1;
