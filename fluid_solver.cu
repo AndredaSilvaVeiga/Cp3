@@ -17,16 +17,6 @@
 #define LINEARSOLVERTIMES 20
 
 
-// Add sources (density or velocity)
-void add_source(int M, int N, int O, float *x, float *s, float dt) {
-  int size = (M + 2) * (N + 2) * (O + 2);
-  
-  int threadsPerBlock = 256;
-  int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
-
-  add_source_kernel<<<blocksPerGrid, threadsPerBlock>>>(M, N, O, x, s,dt);
-}
-
 __global__ void add_source_kernel(int M, int N, int O, float *x, float *s,float dt) {
 
 
@@ -38,6 +28,15 @@ __global__ void add_source_kernel(int M, int N, int O, float *x, float *s,float 
   }
 }
 
+// Add sources (density or velocity)
+void add_source(int M, int N, int O, float *x, float *s, float dt) {
+  int size = (M + 2) * (N + 2) * (O + 2);
+  
+  int threadsPerBlock = 256;
+  int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
+
+  add_source_kernel<<<blocksPerGrid, threadsPerBlock>>>(M, N, O, x, s,dt);
+}
 // Não funciona
 // Set boundary conditions - Kernel
 __global__ void set_bnd_kernel(int M, int N, int O, int b, float *x) {
@@ -299,30 +298,6 @@ void advect(int M, int N, int O, int b, float *d, float *d0, float *u, float *v,
   set_bnd(M, N, O, b, d);
 }
 
-// Projection step to ensure incompressibility (make the velocity field
-// divergence-free)
-// Spatial Locality Done
-void project(int M, int N, int O, float *u, float *v, float *w, float *p, float *div) {
-
-
-  dim3 threadsPerBlock(8,8,8);
-  dim3 gridDim((M + threadsPerBlock.x - 1) / threadsPerBlock.x,
-               (N + threadsPerBlock.y - 1) / threadsPerBlock.y,
-               (O + threadsPerBlock.z - 1) / threadsPerBlock.z);
-
- 
-project1_kernel<<<gridDim, threadsPerBlock>>>(M, N, O, u, v, w, p, div);
-
-  set_bnd(M, N, O, 0, div);
-  set_bnd(M, N, O, 0, p);
-  lin_solve(M, N, O, 0, p, div, 1, 6);
-
-project2_kernel<<<gridDim, threadsPerBlock>>>(M, N, O, u, v, w, p);
-
-  set_bnd(M, N, O, 1, u);
-  set_bnd(M, N, O, 2, v);
-  set_bnd(M, N, O, 3, w);
-}
 
 
 __global__ void project1_kernel(int M, int N, int O, float *u, float *v, float *w, float *p, float *div) {
@@ -359,17 +334,44 @@ __global__ void project2_kernel(int M, int N, int O, float *u, float *v, float *
 
 }
 
+// Projection step to ensure incompressibility (make the velocity field
+// divergence-free)
+// Spatial Locality Done
+void project(int M, int N, int O, float *u, float *v, float *w, float *p, float *div) {
+
+
+  dim3 threadsPerBlock(8,8,8);
+  dim3 gridDim((M + threadsPerBlock.x - 1) / threadsPerBlock.x,
+               (N + threadsPerBlock.y - 1) / threadsPerBlock.y,
+               (O + threadsPerBlock.z - 1) / threadsPerBlock.z);
+
+ 
+project1_kernel<<<gridDim, threadsPerBlock>>>(M, N, O, u, v, w, p, div);
+
+  set_bnd(M, N, O, 0, div);
+  set_bnd(M, N, O, 0, p);
+  lin_solve(M, N, O, 0, p, div, 1, 6);
+
+project2_kernel<<<gridDim, threadsPerBlock>>>(M, N, O, u, v, w, p);
+
+  set_bnd(M, N, O, 1, u);
+  set_bnd(M, N, O, 2, v);
+  set_bnd(M, N, O, 3, w);
+}
+
+
 // Step function for density
 void dens_step(int M, int N, int O, float *x, float *x0, float *u, float *v, float *w, float diff, float dt) {
 
+  float *u_k,*w_k,*v_k,*x_k,*x0_k;
   int size = (M + 2) * (N + 2) * (O + 2);
   size *= sizeof(float);
 
-  cudaMalloc(&u_k, size);
-  cudaMalloc(&v_k, size);
-  cudaMalloc(&w_k, size);
-  cudaMalloc(&x_k, size);
-  cudaMalloc(&x0_k, size);
+  cudaMalloc((void **)&u_k, size);
+  cudaMalloc((void **)&v_k, size);
+  cudaMalloc((void **)&w_k, size);
+  cudaMalloc((void **)&x_k, size);
+  cudaMalloc((void **)&x0_k, size);
 
   cudaMemcpy(u_k, u, size , cudaMemcpyHostToDevice);
   cudaMemcpy(v_k, v, size , cudaMemcpyHostToDevice);
@@ -394,16 +396,16 @@ void dens_step(int M, int N, int O, float *x, float *x0, float *u, float *v, flo
 // Step function for velocity
 void vel_step(int M, int N, int O, float *u, float *v, float *w, float *u0, float *v0, float *w0, float visc, float dt) {
 
-
+  float *u_k,*u0_k,*v_k,*v0_k,*w_k,*w0_k;
   int size = (M + 2) * (N + 2) * (O + 2);
   size *= sizeof(float);
 
-  cudaMalloc(&u_k, size);
-  cudaMalloc(&u0_k, size);
-  cudaMalloc(&v_k, size);
-  cudaMalloc(&v0_k, size);
-  cudaMalloc(&w_k, size);
-  cudaMalloc(&w0_k, size);
+  cudaMalloc((void **)&u_k, size);
+  cudaMalloc((void **)&u0_k, size);
+  cudaMalloc((void **)&v_k, size);
+  cudaMalloc((void **)&v0_k, size);
+  cudaMalloc((void **)&w_k, size);
+  cudaMalloc((void **)&w0_k, size);
 
   cudaMemcpy(u_k, u, size , cudaMemcpyHostToDevice);
   cudaMemcpy(u0_k, u0, size , cudaMemcpyHostToDevice);
@@ -417,7 +419,7 @@ void vel_step(int M, int N, int O, float *u, float *v, float *w, float *u0, floa
   add_source(M, N, O, w_k, w0_k, dt);
   SWAP(u0_k, u_k);
   diffuse(M, N, O, 1, u_k, u0_k, visc, dt);
-  SWAP(v0_k v_k);
+  SWAP(v0_k, v_k);
   diffuse(M, N, O, 2, v_k, v0_k, visc, dt);
   SWAP(w0, w);
   diffuse(M, N, O, 3, w_k, w0_k, visc, dt);
