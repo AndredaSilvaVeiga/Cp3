@@ -1,6 +1,6 @@
 CPP = nvcc -arch=compute_35 -code=sm_35 -Wno-deprecated-gpu-targets -Xcompiler "-Ofast  -fopenmp"
 
-SRCS = Src/main.cu Src/fluid_solver.cu Src/EventManager.cpp
+SRCS = main.cu fluid_solver.cu EventManager.cpp
 
 
 all: phase2
